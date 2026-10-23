@@ -1,6 +1,7 @@
 """Transparent, offline basket optimizer using user-provided prices."""
 from dataclasses import dataclass
 from itertools import combinations
+from math import isfinite
 
 @dataclass(frozen=True)
 class Price:
@@ -10,12 +11,17 @@ class Price:
     unit: str = "each"
 
 def best_basket(items, prices, extra_store_penalty=15.0):
+    """Find a lowest-cost basket, including a fixed penalty for each extra store.
+
+    Price rows must represent comparable units for each item.
+    """
     items = list(dict.fromkeys(x.strip() for x in items if x.strip()))
-    if extra_store_penalty < 0:
-        raise ValueError("Extra-store penalty must be nonnegative")
+    if not isfinite(extra_store_penalty) or extra_store_penalty < 0:
+        raise ValueError("Extra-store penalty must be a finite nonnegative amount")
     if not items:
         return {"stores": [], "basket": [], "subtotal_sek": 0, "penalty_sek": 0, "total_sek": 0}
-    prices = [p for p in prices if p.sek >= 0]
+    if any(not isfinite(p.sek) or p.sek < 0 for p in prices):
+        raise ValueError("Prices must be finite nonnegative amounts")
     stores = sorted(set(p.store for p in prices))
     best = None
     for count in range(1, len(stores) + 1):
